@@ -22,11 +22,14 @@ def input_error(func):
 @input_error
 def add_command(*args):
     name = Name(args[0])
-    phone = Phone(args[1])
+    phones_data = args[1].split(",")
+    phones = [Phone(phone.strip().replace(" ", "")) for phone in phones_data]
     rec: Record = address_book.get(str(name))
     if rec:
-        return rec.add_phone(phone)
-    rec = Record(name, phone)
+        for phone in phones:
+            rec.add_phone(phone)
+        return f"Phones {', '.join(str(phone) for phone in phones)} added to contact {rec.name}"
+    rec = Record(name, phones)
     return address_book.add_record(rec)
 
 
@@ -41,24 +44,31 @@ def change_command(*args):
     return f"No contact {name} in address book"
 
 
-@input_error
-def exit_command(*args):
+def exit_command():
+    address_book.save_address_book()
     return "Bye"
 
 
 @input_error
 def unknown_command(*args):
-    pass
+    return f"Unknown command: {args[0]}"
 
 
 @input_error
 def show_all_command(*args):
-    return address_book
+    n = int(args[0]) if args else 2
+    records = list(address_book)
+    result = "\n".join(str(record) for record in records[:n])
+    return result
 
 
 @input_error
 def delete_command(*args):
-    pass
+    if (
+        args in address_book
+        and "yes" == input(f"Are you sure delete {args}: Yes/No :").lower()
+    ):
+        address_book.del_record(args)
 
 
 COMMANDS = {
@@ -74,13 +84,13 @@ def parser(text):
     for cmd, kwds in COMMANDS.items():
         for kwd in kwds:
             if text.lower().startswith(kwd):
-                # print(cmd)
                 data = text[len(kwd) :].strip().split()
                 return cmd, data
-    return unknown_command, []
+    return unknown_command, [text]
 
 
 def main():
+    # address_book.load_address_book()
     while True:
         user_input = input("Wait...>")
 
