@@ -90,7 +90,7 @@ def parser(text):
 
 
 def main():
-    # address_book.load_address_book()
+    address_book.load_address_book()
     while True:
         user_input = input("Wait...>")
 
