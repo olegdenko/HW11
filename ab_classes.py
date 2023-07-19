@@ -1,6 +1,8 @@
 from collections import UserDict
 from datetime import datetime
 import re
+import pickle
+import os
 
 
 class Field:
@@ -122,44 +124,29 @@ class AddressBook(UserDict):
 
     def load_address_book(self):
         path = input(
-            'Input path for address book (Default path is "addressbook.txt"): '
+            'Input path for address book (Default path is "addressbook.pkl"): '
         )
         if not path:
-            path = "addressbook.txt"
+            path = "addressbook.pkl"
         try:
-            with open(path, "r") as file:
-                lines = file.readlines()
-                if not lines:
-                    return "Address book file is empty."
-                for line in lines:
-                    values = line.strip().split(":")
-                    if len(values) == 2:
-                        n, p = values
-                        name = Name(n)
-                        phones = [Phone(phone.strip()) for phone in p.split(",")]
-
-                        contact = Record(name, phones)
-                        self.add_record(contact)
+            with open(path, "r+b") as file:
+                try:
+                    self.data = pickle.load(file)
+                except EOFError:
+                    print(f"File '{path}' is empty. Creating an empty address book.")
+                    self.data = AddressBook()
         except FileNotFoundError:
-            pass
+            print(f"File '{path}' not found. Creating an empty address book.")
+            self.data = AddressBook()
         return self
 
     def save_address_book(self, path=None):
         if not path:
-            path = input('Input path for saving (Default path is "addressbook.txt"): ')
+            path = input('Input path for saving (Default path is "addressbook.pkl"): ')
         if not path:
-            path = "addressbook.txt"
-        with open(path, "w") as file:
-            for name, record in self.data.items():
-                if isinstance(record, Record):
-                    phones = [
-                        phone.value if isinstance(phone, Phone) else str(phone)
-                        for phone in record.phones
-                    ]
-                    phones_str = ", ".join(filter(None, phones))
-                    file.write(f"{name}:{phones_str}\n")
-                else:
-                    file.write(f"{name}:{record}\n")
+            path = "addressbook.pkl"
+        with open(path, "wb") as file:
+            pickle.dump(self.data, file)
 
     def iterator(self):
         records = list(self.data.values())
