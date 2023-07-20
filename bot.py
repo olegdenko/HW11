@@ -54,7 +54,6 @@ def unknown_command(*args):
     return f"Unknown command: {args[0]}"
 
 
-@input_error
 def show_all_command(*args):
     n = int(args[0]) if args else 2
     records = list(address_book)

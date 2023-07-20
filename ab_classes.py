@@ -86,6 +86,12 @@ class Record:
         if phone:
             self.phones.append(phone)
 
+    def __hash__(self):
+        return hash((self.name, tuple(self.phones)))
+
+    def __eq__(self, other):
+        return self.name == other.name and self.phones == other.phones
+
     def add_phone(self, phone: Phone):
         if phone.value not in [p for p in self.phones]:
             self.phones.append(phone)
@@ -110,6 +116,7 @@ class AddressBook(UserDict):
     def __init__(self):
         super().__init__()
         self.page_size = 10  # Розмір однієї сторінки
+        self.data = {}
 
     def add_record(self, record: Record):
         self.data[str(record.name)] = record
