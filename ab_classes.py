@@ -2,7 +2,11 @@ from collections import UserDict
 from datetime import datetime
 import re
 import pickle
-import os
+import itertools
+
+
+class BirthdayError(Exception):
+    ...
 
 
 class Field:
@@ -57,15 +61,15 @@ class Birthday(Field):
         try:
             datetime.strptime(self.value, "%Y-%m-%d")
         except ValueError:
-            raise ValueError("Invalid birthday format")
+            raise BirthdayError("Invalid birthday format")
 
     @property
     def value(self):
         return self._value
 
     @value.setter
-    def value(self, new_value):
-        self._value = new_value
+    def value(self, value):
+        self._value = value
         self.validate_birthday()
 
     def days_to_birthday(self):
@@ -75,7 +79,7 @@ class Birthday(Field):
         return abs(delta.days)
 
     def __str__(self) -> str:
-        return self.value
+        return self.value.strftime("%d-%m-%Y")
 
 
 class Record:
@@ -86,17 +90,11 @@ class Record:
         if phone:
             self.phones.append(phone)
 
-    def __hash__(self):
-        return hash((self.name, tuple(self.phones)))
-
-    def __eq__(self, other):
-        return self.name == other.name and self.phones == other.phones
-
     def add_phone(self, phone: Phone):
-        if phone.value not in [p for p in self.phones]:
+        if phone.value not in [p.value for p in self.phones]:
             self.phones.append(phone)
-            return f"phone {phone} add to conyact {self.name}"
-        return f"{phone} present in phonebook"
+            return f"Phone {phone} added to contact {self.name}"
+        return f"Phone {phone} already present in contact {self.name}"
 
     def change_phone(self, old_phone, new_phone):
         for idx, p in enumerate(self.phones):
@@ -113,21 +111,20 @@ class Record:
 
 
 class AddressBook(UserDict):
-    def __init__(self):
-        super().__init__()
-        self.page_size = 10  # Розмір однієї сторінки
-        self.data = {}
+    def __init__(self, *args, page_size=5, **kwargs):
+        self.page_size = page_size
+        super().__init__(*args, **kwargs)
 
     def add_record(self, record: Record):
         self.data[str(record.name)] = record
-        return f"Contact {record} added"
+        return f"Contact {record.name} added"
 
-    def del_record(self, name: str):
-        if name in self.data:
-            del self.data[name]
-            return f"Contact {name} deleted"
-        else:
-            return f"Contact {name} does not exist in the phonebook"
+    def del_record(self, name):
+        for record in self.data:
+            if record.name == name:
+                self.data.remove(record)
+                return f"Contact {name} deleted"
+        return f"Contact {name} does not exist in the phonebook"
 
     def load_address_book(self):
         path = input(
@@ -155,16 +152,27 @@ class AddressBook(UserDict):
         with open(path, "wb") as file:
             pickle.dump(self.data, file)
 
+    def del_record(self, name):
+        for record in self.data:
+            if record.name == name:
+                self.data.remove(record)
+                return f"Contact {name} deleted"
+        return f"Contact {name} does not exist in the phonebook"
+
+    def values(self):
+        return iter(self.data.values())
+
     def iterator(self):
-        records = list(self.data.values())
-        total_records = len(records)
+        total_records = len(self.data)
         current_page = 0
         while current_page < total_records:
-            yield records[current_page : current_page + self.page_size]
+            yield itertools.islice(
+                self.values(), current_page, current_page + self.page_size
+            )
             current_page += self.page_size
 
     def __iter__(self):
         return iter(self.data.values())
 
-    def __str__(self) -> str:
-        return "\n".join(str(r) for r in self.data.values())
+    def __str__(self):
+        return "\n".join(str(record) for record in self.data)

@@ -24,11 +24,15 @@ def add_command(*args):
     name = Name(args[0])
     phones_data = args[1].split(",")
     phones = [Phone(phone.strip().replace(" ", "")) for phone in phones_data]
-    rec: Record = address_book.get(str(name))
+
+    name_str = str(name)
+
+    rec = address_book.get(name_str)
     if rec:
         for phone in phones:
             rec.add_phone(phone)
         return f"Phones {', '.join(str(phone) for phone in phones)} added to contact {rec.name}"
+
     rec = Record(name, phones)
     return address_book.add_record(rec)
 
@@ -54,20 +58,28 @@ def unknown_command(*args):
     return f"Unknown command: {args[0]}"
 
 
+# @input_error
 def show_all_command(*args):
-    n = int(args[0]) if args else 2
-    records = list(address_book)
-    result = "\n".join(str(record) for record in records[:n])
-    return result
+    if not address_book:
+        return "Address book is empty"
+
+    all_contacts = ""
+    for page, records in enumerate(address_book.iterator(), start=1):
+        all_contacts += f"Сторінка {page}:\n"
+        all_contacts += "\n".join(str(record) for record in records)
+        all_contacts += "\n\n"
+
+    return all_contacts
 
 
 @input_error
 def delete_command(*args):
-    if (
-        args in address_book
-        and "yes" == input(f"Are you sure delete {args}: Yes/No :").lower()
-    ):
-        address_book.del_record(args)
+    contact_name = str(args[0])
+    if contact_name in address_book:
+        if "yes" == input(f"Are you sure delete {args}: Yes/No :").lower():
+            address_book.del_record(contact_name)
+    else:
+        return f"Contact {contact_name} not found in the address book"
 
 
 COMMANDS = {
