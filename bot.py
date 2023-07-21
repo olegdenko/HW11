@@ -1,4 +1,12 @@
-from ab_classes import AddressBook, Name, Phone, Record
+from ab_classes import (
+    AddressBook,
+    Name,
+    Phone,
+    Record,
+    Birthday,
+    BirthdayError,
+    DuplicatePhoneError,
+)
 
 address_book = AddressBook()
 
@@ -15,6 +23,8 @@ def input_error(func):
             return "Invalid command"
         except TypeError:
             return "Please provide the necessary parameters"
+        except BirthdayError:
+            return "Invalid birthday format. Please use the format 'day-month-year', e.g., '26-11-1978'."
 
     return wrapper
 
@@ -25,15 +35,23 @@ def add_command(*args):
     phones_data = args[1].split(",")
     phones = [Phone(phone.strip().replace(" ", "")) for phone in phones_data]
 
+    if len(args) >= 3:
+        birth = Birthday(args[2])
+    else:
+        birth = None
+
     name_str = str(name)
 
     rec = address_book.get(name_str)
     if rec:
-        for phone in phones:
-            rec.add_phone(phone)
-        return f"Phones {', '.join(str(phone) for phone in phones)} added to contact {rec.name}"
+        try:
+            for phone in phones:
+                rec.add_phone(phone)
+            return f"Phones {', '.join(str(phone) for phone in phones)} added to contact {rec.name}"
+        except DuplicatePhoneError as e:
+            return str(e)
 
-    rec = Record(name, phones)
+    rec = Record(name, phones, birth)
     return address_book.add_record(rec)
 
 
@@ -58,16 +76,29 @@ def unknown_command(*args):
     return f"Unknown command: {args[0]}"
 
 
-# @input_error
+@input_error
 def show_all_command(*args):
     if not address_book:
         return "Address book is empty"
 
+    if not args:
+        start_page = 1
+        end_page = float("inf")
+    elif len(args) == 1:
+        start_page = int(args[0])
+        end_page = start_page
+    elif len(args) == 2:
+        start_page = int(args[0])
+        end_page = int(args[1])
+    else:
+        return "Invalid number of arguments. Usage: show all [start_page [end_page]]"
+
     all_contacts = ""
     for page, records in enumerate(address_book.iterator(), start=1):
-        all_contacts += f"Сторінка {page}:\n"
-        all_contacts += "\n".join(str(record) for record in records)
-        all_contacts += "\n\n"
+        if start_page <= page <= end_page:
+            all_contacts += f"Page {page}:\n"
+            all_contacts += "\n".join(str(record) for record in records)
+            all_contacts += "\n\n"
 
     return all_contacts
 
@@ -76,8 +107,11 @@ def show_all_command(*args):
 def delete_command(*args):
     contact_name = str(args[0])
     if contact_name in address_book:
-        if "yes" == input(f"Are you sure delete {args}: Yes/No :").lower():
+        confirmation = input(f"Are you sure delete {contact_name}: Yes/No :").lower()
+        if confirmation == "yes":
             address_book.del_record(contact_name)
+            return f"Contact {contact_name} deleted"
+
     else:
         return f"Contact {contact_name} not found in the address book"
 
@@ -87,7 +121,7 @@ COMMANDS = {
     change_command: ("change", "зміни"),
     exit_command: ("bye", "exit", "end"),
     show_all_command: ("show all", "покажи все"),
-    delete_command: ("del", "delete", "видали"),
+    delete_command: ("del", "dell", "delete", "видали"),
 }
 
 

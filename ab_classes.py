@@ -1,11 +1,15 @@
 from collections import UserDict
-from datetime import datetime
+from datetime import datetime, date
 import re
 import pickle
 import itertools
 
 
 class BirthdayError(Exception):
+    ...
+
+
+class DuplicatePhoneError(Exception):
     ...
 
 
@@ -59,9 +63,9 @@ class Birthday(Field):
 
     def validate_birthday(self):
         try:
-            datetime.strptime(self.value, "%Y-%m-%d")
+            datetime.strptime(self.value, "%d-%m-%Y")
         except ValueError:
-            raise BirthdayError("Invalid birthday format")
+            raise BirthdayError("Invalid birthday format. Use DD-MM-YYYY format.")
 
     @property
     def value(self):
@@ -74,9 +78,16 @@ class Birthday(Field):
 
     def days_to_birthday(self):
         current_date = datetime.now().date()
-        given_date = datetime.strptime(self.value, "%Y-%m-%d").date()
-        delta = given_date - current_date
-        return abs(delta.days)
+        given_date = datetime.strptime(self.value, "%d-%m-%Y").date()
+        next_birthday = date(current_date.year, given_date.month, given_date.day)
+
+        if next_birthday < current_date:
+            next_birthday = date(
+                current_date.year + 1, given_date.month, given_date.day
+            )
+
+        delta = next_birthday - current_date
+        return delta.days
 
     def __str__(self) -> str:
         return self.value.strftime("%d-%m-%Y")
@@ -86,14 +97,21 @@ class Record:
     def __init__(self, name, phone=None, birthday=None):
         self.birthday = Birthday(birthday) if birthday else None
         self.name = name
-        self.phones = []
+        self.phones = [] if phone else []
         if phone:
             self.phones.append(phone)
+        if birthday:
+            self.birthday = Birthday(birthday)
 
     def add_phone(self, phone: Phone):
+        if not self.phones:
+            self.phones.append(phone)
+            return f"Phone {phone} added to contact {self.name}"
+
         if phone.value not in [p.value for p in self.phones]:
             self.phones.append(phone)
             return f"Phone {phone} added to contact {self.name}"
+
         return f"Phone {phone} already present in contact {self.name}"
 
     def change_phone(self, old_phone, new_phone):
@@ -103,9 +121,13 @@ class Record:
                 return f"old phone {old_phone} change to {new_phone}"
         return f"{old_phone} not present in phonebook"
 
+    def change_birthday(self, new_birthday):
+        self.birthday = Birthday(new_birthday)
+
     def __str__(self):
         if self.birthday:
-            return f'{self.name}: {", ".join(str(p) for p in self.phones)} (Birthday: {self.birthday.value})'
+            birthday_str = str(self.birthday)
+            return f'{self.name}: {", ".join(str(p) for p in self.phones)} (Birthday: {birthday_str})'
         else:
             return f'{self.name}: {", ".join(str(p) for p in self.phones)}'
 
@@ -120,10 +142,9 @@ class AddressBook(UserDict):
         return f"Contact {record.name} added"
 
     def del_record(self, name):
-        for record in self.data:
-            if record.name == name:
-                self.data.remove(record)
-                return f"Contact {name} deleted"
+        if name in self.data:
+            del self.data[name]
+            return f"Contact {name} deleted"
         return f"Contact {name} does not exist in the phonebook"
 
     def load_address_book(self):
@@ -153,10 +174,8 @@ class AddressBook(UserDict):
             pickle.dump(self.data, file)
 
     def del_record(self, name):
-        for record in self.data:
-            if record.name == name:
-                self.data.remove(record)
-                return f"Contact {name} deleted"
+        if name in self.data:
+            del self.data[name]
         return f"Contact {name} does not exist in the phonebook"
 
     def values(self):
