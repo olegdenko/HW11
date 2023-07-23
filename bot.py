@@ -3,7 +3,6 @@ from ab_classes import (
     Name,
     Phone,
     Record,
-    Birthday,
     BirthdayError,
     DuplicatePhoneError,
 )
@@ -30,28 +29,25 @@ def input_error(func):
 
 
 @input_error
+@input_error
 def add_command(*args):
     name = Name(args[0])
-    phones_data = args[1].split(",")
-    phones = [Phone(phone.strip().replace(" ", "")) for phone in phones_data]
+    phone = Phone(args[1].strip().replace(" ", ""))
 
     if len(args) >= 3:
-        birth = Birthday(args[2])
+        birth = args[2]
     else:
         birth = None
 
-    name_str = str(name)
-
-    rec = address_book.get(name_str)
+    rec: Record = address_book.get(str(name))
     if rec:
         try:
-            for phone in phones:
-                rec.add_phone(phone)
-            return f"Phones {', '.join(str(phone) for phone in phones)} added to contact {rec.name}"
+            rec.add_phone(phone)
+            return f"Phones {', '.join(str(phone))} added to contact {rec.name}"
         except DuplicatePhoneError as e:
             return str(e)
 
-    rec = Record(name, phones, birth)
+    rec = Record(name, phone, birth)
     return address_book.add_record(rec)
 
 
@@ -77,6 +73,19 @@ def unknown_command(*args):
 
 
 @input_error
+def get_phone_command(*args):
+    if len(args) != 1:
+        return "Invalid arguments. Usage: get <contact_name>"
+
+    contact_name = args[0]
+    rec: Record = address_book.get(contact_name)
+    if rec:
+        return f"Phones for {contact_name}: {', '.join(str(phone) for phone in rec.phones)}: (Days to birthday: {rec.birthday.days_to_birthday()})"
+    else:
+        return f"Contact {contact_name} not found in the address book"
+
+
+@input_error
 def show_all_command(*args):
     if not address_book:
         return "Address book is empty"
@@ -91,14 +100,18 @@ def show_all_command(*args):
         start_page = int(args[0])
         end_page = int(args[1])
     else:
-        return "Invalid number of arguments. Usage: show all [start_page [end_page]]"
+        return "Invalid arguments. Usage: show all [start_page [end_page]]"
 
     all_contacts = ""
     for page, records in enumerate(address_book.iterator(), start=1):
         if start_page <= page <= end_page:
             all_contacts += f"Page {page}:\n"
-            all_contacts += "\n".join(str(record) for record in records)
-            all_contacts += "\n\n"
+            for record in records:
+                contact_str = str(record)
+                if record.birthday:
+                    contact_str += f" (Days to birthday: {record.birthday.days_to_birthday()})"  # Birthday: {record.birthday},
+                all_contacts += contact_str + "\n"
+            all_contacts += "\n"
 
     return all_contacts
 
@@ -121,7 +134,8 @@ COMMANDS = {
     change_command: ("change", "зміни"),
     exit_command: ("bye", "exit", "end"),
     show_all_command: ("show all", "покажи все"),
-    delete_command: ("del", "dell", "delete", "видали"),
+    delete_command: ("del", "delete", "видали"),
+    get_phone_command: ("get", "дай"),
 }
 
 

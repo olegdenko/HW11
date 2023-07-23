@@ -58,78 +58,70 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
-        super().__init__(value)
-        self.validate_birthday()
+        self.validate_birthday(value)
+        self.value = datetime.strptime(value, "%d-%m-%Y").date()
 
-    def validate_birthday(self):
+    def validate_birthday(self, value):
         try:
-            datetime.strptime(self.value, "%d-%m-%Y")
+            datetime.strptime(value, "%d-%m-%Y")
         except ValueError:
             raise BirthdayError("Invalid birthday format. Use DD-MM-YYYY format.")
 
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-        self.validate_birthday()
-
     def days_to_birthday(self):
+        if not self.value:
+            return None
+
         current_date = datetime.now().date()
-        given_date = datetime.strptime(self.value, "%d-%m-%Y").date()
-        next_birthday = date(current_date.year, given_date.month, given_date.day)
+        given_date = date(current_date.year, self.value.month, self.value.day)
+        if given_date < current_date:
+            given_date = date(current_date.year + 1, self.value.month, self.value.day)
 
-        if next_birthday < current_date:
-            next_birthday = date(
-                current_date.year + 1, given_date.month, given_date.day
-            )
-
-        delta = next_birthday - current_date
+        delta = given_date - current_date
         return delta.days
 
     def __str__(self) -> str:
-        return self.value.strftime("%d-%m-%Y")
+        return self.value.strftime("%d-%m-%Y") if self.value else ""
 
 
 class Record:
     def __init__(self, name, phone=None, birthday=None):
-        self.birthday = Birthday(birthday) if birthday else None
         self.name = name
-        self.phones = [] if phone else []
+        self.phones = []
         if phone:
-            self.phones.append(phone)
-        if birthday:
-            self.birthday = Birthday(birthday)
+            self.add_phone(phone)
+        self.birthday = Birthday(birthday) if birthday else None
 
     def add_phone(self, phone: Phone):
-        if not self.phones:
-            self.phones.append(phone)
-            return f"Phone {phone} added to contact {self.name}"
-
-        if phone.value not in [p.value for p in self.phones]:
+        if phone not in self.phones:
             self.phones.append(phone)
             return f"Phone {phone} added to contact {self.name}"
 
         return f"Phone {phone} already present in contact {self.name}"
 
     def change_phone(self, old_phone, new_phone):
-        for idx, p in enumerate(self.phones):
-            if old_phone.value == p.value:
+        for idx, phone in enumerate(self.phones):
+            if old_phone.value == phone.value:
                 self.phones[idx] = new_phone
-                return f"old phone {old_phone} change to {new_phone}"
+                return f"Old phone {old_phone} changed to {new_phone}"
+
         return f"{old_phone} not present in phonebook"
 
     def change_birthday(self, new_birthday):
         self.birthday = Birthday(new_birthday)
 
     def __str__(self):
+        phone_str = ", ".join(str(phone) for phone in self.phones)
+        contact_str = f"{self.name}: [{phone_str}]"
         if self.birthday:
-            birthday_str = str(self.birthday)
-            return f'{self.name}: {", ".join(str(p) for p in self.phones)} (Birthday: {birthday_str})'
-        else:
-            return f'{self.name}: {", ".join(str(p) for p in self.phones)}'
+            contact_str += f" (Birthday: {self.birthday})"
+        return contact_str
+
+    def birthday_info(self):
+        if self.birthday:
+            return (
+                f"{self.birthday}, Days to birthday: {self.birthday.days_to_birthday()}"
+            )
+        return ""
 
 
 class AddressBook(UserDict):
