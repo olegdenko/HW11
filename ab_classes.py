@@ -58,29 +58,38 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
-        self.validate_birthday(value)
-        self.value = datetime.strptime(value, "%d-%m-%Y").date()
+        self._validate_birthday(value)
+        self._value = datetime.strptime(value, "%d-%m-%Y").date()
 
-    def validate_birthday(self, value):
+    def _validate_birthday(self, value):
         try:
             datetime.strptime(value, "%d-%m-%Y")
         except ValueError:
             raise BirthdayError("Invalid birthday format. Use DD-MM-YYYY format.")
 
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._validate_birthday(new_value)
+        self._value = datetime.strptime(new_value, "%d-%m-%Y").date()
+
     def days_to_birthday(self):
-        if not self.value:
+        if not self._value:
             return None
 
         current_date = datetime.now().date()
-        given_date = date(current_date.year, self.value.month, self.value.day)
+        given_date = date(current_date.year, self._value.month, self._value.day)
         if given_date < current_date:
-            given_date = date(current_date.year + 1, self.value.month, self.value.day)
+            given_date = date(current_date.year + 1, self._value.month, self._value.day)
 
         delta = given_date - current_date
         return delta.days
 
     def __str__(self) -> str:
-        return self.value.strftime("%d-%m-%Y") if self.value else ""
+        return self._value.strftime("%d-%m-%Y") if self._value else ""
 
 
 class Record:
