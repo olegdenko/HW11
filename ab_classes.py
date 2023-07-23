@@ -33,11 +33,11 @@ class Name(Field):
 
 class Phone(Field):
     def __init__(self, value):
-        super().__init__(value)
-        self.validate_phone()
+        self.validate_phone(value)
+        self._value = value
 
-    def validate_phone(self):
-        if not re.match(r"^\d{7,15}$", self.value):
+    def validate_phone(self, value):
+        if not re.match(r"^\d{7,15}$", value):
             raise ValueError("Invalid phone number format")
 
     @property
@@ -46,8 +46,8 @@ class Phone(Field):
 
     @value.setter
     def value(self, new_value):
+        self.validate_phone(new_value)
         self._value = new_value
-        self.validate_phone()
 
     def __repr__(self) -> str:
         return str(self)
