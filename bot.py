@@ -88,6 +88,18 @@ def get_phone_command(*args):
 
 
 @input_error
+def find_command(*args):
+    result = []
+    search = args[0]
+    if len(search) < 3:
+        return "Invalid arguments. Usage: find <minimum 3 symbols>"
+    for i in address_book:
+        if search in str(i):
+            result.append(str(i))
+    return "\n".join(result)
+
+
+@input_error
 def show_all_command(*args):
     if not address_book:
         return "Address book is empty"
@@ -134,10 +146,11 @@ def delete_command(*args):
 COMMANDS = {
     add_command: ("add", "+"),
     change_command: ("change", "зміни"),
-    exit_command: ("bye", "exit", "end"),
+    exit_command: ("bye", "exit", "end", "вихід"),
     show_all_command: ("show all", "покажи все"),
     delete_command: ("del", "delete", "видали"),
     get_phone_command: ("get", "дай"),
+    find_command: ("search", "find", "знайди"),
 }
 
 
