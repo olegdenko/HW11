@@ -16,8 +16,8 @@ def input_error(func):
             return func(*args)
         except KeyError:
             return "Enter user name"
-        except ValueError:
-            return "Give me name and phone please"
+        except ValueError as v:
+            return v if v else "Give me name and phone please"
         except IndexError:
             return "Invalid command"
         except TypeError:
@@ -28,7 +28,6 @@ def input_error(func):
     return wrapper
 
 
-@input_error
 @input_error
 def add_command(*args):
     name = Name(args[0])
@@ -43,7 +42,7 @@ def add_command(*args):
     if rec:
         try:
             rec.add_phone(phone)
-            return f"Phones {', '.join(str(phone))} added to contact {rec.name}"
+            return f"Phone {(str(phone))} added to contact {rec.name}"
         except DuplicatePhoneError as e:
             return str(e)
 
@@ -80,7 +79,10 @@ def get_phone_command(*args):
     contact_name = args[0]
     rec: Record = address_book.get(contact_name)
     if rec:
-        return f"Phones for {contact_name}: {', '.join(str(phone) for phone in rec.phones)}: (Days to birthday: {rec.birthday.days_to_birthday()})"
+        if rec.birthday:
+            return f"Phones for {contact_name}: {', '.join(str(phone) for phone in rec.phones)}: (Days to birthday: {rec.birthday.days_to_birthday()})"
+        else:
+            return f"Phones for {contact_name}: {', '.join(str(phone) for phone in rec.phones)}"
     else:
         return f"Contact {contact_name} not found in the address book"
 

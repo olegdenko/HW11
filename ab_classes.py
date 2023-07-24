@@ -13,6 +13,10 @@ class DuplicatePhoneError(Exception):
     ...
 
 
+class NotValidNumber(Exception):
+    ...
+
+
 class Field:
     def __init__(self, value) -> None:
         self._value = value
@@ -32,11 +36,12 @@ class Name(Field):
 
 
 class Phone(Field):
-    def __init__(self, value):
-        self.validate_phone(value)
-        self._value = value
+    def __init__(self, value=None):
+        self._value = None
+        if value is not None:
+            self.value = value
 
-    def validate_phone(self, value):
+    def _validate_phone(self, value):
         if not re.match(r"^\d{7,15}$", value):
             raise ValueError("Invalid phone number format")
 
@@ -46,7 +51,7 @@ class Phone(Field):
 
     @value.setter
     def value(self, new_value):
-        self.validate_phone(new_value)
+        self._validate_phone(new_value)
         self._value = new_value
 
     def __repr__(self) -> str:
